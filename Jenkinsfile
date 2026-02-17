@@ -64,9 +64,12 @@ pipeline {
       
       // Publicar relatório HTML - VERSÃO SIMPLIFICADA (compatível com versões antigas)
       publishHTML([
+        reportName: 'Playwright HTML Report',
         reportDir: 'playwright-report',
         reportFiles: 'index.html',
-        reportName: 'Relatório Playwright'
+        keepAll: true,
+        alwaysLinkToLastBuild: true,
+        allowMissing: true
       ])
     }
     
