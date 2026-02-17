@@ -11,17 +11,16 @@ pipeline {
     CI = 'true'
     BASE_URL = 'https://jsonplaceholder.typicode.com'
     
-    // CAMINHO CORRETO DO NODE.JS (baseado no where node)
+    // CAMINHO CORRETO DO NODE.JS
     NODE_HOME = 'C:\\Program Files\\nodejs'
     
-    // Adiciona Node.js ao PATH (usando ${} do Groovy)
+    // Adiciona Node.js ao PATH
     PATH = "${NODE_HOME};${env.PATH}"
   }
 
   stages {
     stage('Checkout') {
       steps {
-        // usa o SCM configurado no job (URL/branch/credentials)
         checkout scm
       }
     }
@@ -56,18 +55,17 @@ pipeline {
 
   post {
     always {
-      // Publicar resultados dos testes
+      // Publicar resultados dos testes JUnit
       junit testResults: 'test-results/**/*.xml', allowEmptyResults: true
       
       // Arquivar relatórios HTML e artefatos
       archiveArtifacts artifacts: 'playwright-report/**, test-results/**', allowEmptyArchive: true
       
-      // Publicar relatório HTML (se tiver o plugin HTML Publisher)
+      // Publicar relatório HTML - VERSÃO SIMPLIFICADA (sem parâmetros extras)
       publishHTML([
         reportDir: 'playwright-report',
         reportFiles: 'index.html',
-        reportName: 'Relatório Playwright',
-        allowMissing: true
+        reportName: 'Relatório Playwright'
       ])
     }
     
