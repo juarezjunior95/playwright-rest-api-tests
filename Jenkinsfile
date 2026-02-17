@@ -11,7 +11,7 @@ pipeline {
     CI = 'true'
     BASE_URL = 'https://jsonplaceholder.typicode.com'
     
-    // CAMINHO CORRETO DO NODE.JS
+    // CAMINHO CORRETO DO NODE.JS (baseado no where node)
     NODE_HOME = 'C:\\Program Files\\nodejs'
     
     // Adiciona Node.js ao PATH
@@ -21,6 +21,7 @@ pipeline {
   stages {
     stage('Checkout') {
       steps {
+        // usa o SCM configurado no job (URL/branch/credentials)
         checkout scm
       }
     }
@@ -61,7 +62,7 @@ pipeline {
       // Arquivar relatórios HTML e artefatos
       archiveArtifacts artifacts: 'playwright-report/**, test-results/**', allowEmptyArchive: true
       
-      // Publicar relatório HTML - VERSÃO SIMPLIFICADA (sem parâmetros extras)
+      // Publicar relatório HTML - VERSÃO SIMPLIFICADA (compatível com versões antigas)
       publishHTML([
         reportDir: 'playwright-report',
         reportFiles: 'index.html',
