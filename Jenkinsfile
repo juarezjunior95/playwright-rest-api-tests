@@ -1,84 +1,86 @@
 pipeline {
-  agent any
-
-  options {
-    timestamps()
-    // evita o checkout automático para não duplicar
-    skipDefaultCheckout(true)
+  agent {
+    docker {
+      image 'node:22-bullseye'
+      args '-u root:root'
+    }
   }
+
+  options { timestamps() }
 
   environment {
     CI = 'true'
     BASE_URL = 'https://jsonplaceholder.typicode.com'
-    
-    // CAMINHO CORRETO DO NODE.JS (baseado no where node)
-    NODE_HOME = 'C:\\Program Files\\nodejs'
-    
-    // Adiciona Node.js ao PATH
-    PATH = "${NODE_HOME};${env.PATH}"
   }
 
   stages {
     stage('Checkout') {
       steps {
-        // usa o SCM configurado no job (URL/branch/credentials)
         checkout scm
       }
     }
 
     stage('Env debug') {
       steps {
-        bat 'echo ===== WHOAMI ====='
-        bat 'whoami'
-        bat 'echo ===== PATH ====='
-        bat 'echo %PATH%'
-        bat 'echo ===== NODE VERSION ====='
-        bat 'node --version'
-        bat 'npm --version'
-        bat 'npx --version'
+        sh '''
+          set -e
+          echo "=== WHOAMI ==="
+          whoami || true
+          echo "=== NODE/NPM/NPX ==="
+          node -v
+          npm -v
+          npx -v
+        '''
       }
     }
 
     stage('Install') {
       steps {
-        bat 'echo Instalando dependências...'
-        bat 'npm.cmd ci'
+        sh '''
+          set -e
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            echo "WARN: package-lock.json not found. Running npm install..."
+            npm install
+          fi
+        '''
       }
     }
 
     stage('Run API tests') {
       steps {
-        bat 'echo Executando testes de API...'
-        bat 'npx.cmd playwright test'
+        sh '''
+          set -e
+          npx playwright test
+        '''
       }
     }
   }
 
   post {
     always {
-      // Publicar resultados dos testes JUnit
-      junit testResults: 'test-results/**/*.xml', allowEmptyResults: true
-      
-      // Arquivar relatórios HTML e artefatos
+      // Publica JUnit se existir
+      junit testResults: 'test-results/junit.xml', allowEmptyResults: true
+
+      // Arquiva relatórios/artefatos
       archiveArtifacts artifacts: 'playwright-report/**, test-results/**', allowEmptyArchive: true
-      
-      // Publicar relatório HTML - VERSÃO SIMPLIFICADA (compatível com versões antigas)
-      publishHTML([
-        reportName: 'Playwright HTML Report',
-        reportDir: 'playwright-report',
-        reportFiles: 'index.html',
-        keepAll: true,
-        alwaysLinkToLastBuild: true,
-        allowMissing: true
-      ])
-    }
-    
-    success {
-      bat 'echo ✅ Todos os testes passaram!'
-    }
-    
-    failure {
-      bat 'echo ❌ Alguns testes falharam! Verifique o relatório.'
+
+      // Publica HTML só se existir (evita quebrar o post)
+      script {
+        if (fileExists('playwright-report/index.html')) {
+          publishHTML(target: [
+            reportName: 'Playwright HTML Report',
+            reportDir: 'playwright-report',
+            reportFiles: 'index.html',
+            keepAll: true,
+            alwaysLinkToLastBuild: true,
+            allowMissing: true
+          ])
+        } else {
+          echo "Playwright HTML report not found (playwright-report/index.html)."
+        }
+      }
     }
   }
 }
