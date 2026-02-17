@@ -3,21 +3,25 @@ pipeline {
 
   options {
     timestamps()
+    // evita o checkout automático para não duplicar
     skipDefaultCheckout(true)
   }
 
   environment {
     CI = 'true'
     BASE_URL = 'https://jsonplaceholder.typicode.com'
-    // CAMINHO COMPLETO para o Node.js no Windows
+    
+    // CAMINHO CORRETO DO NODE.JS (baseado no where node)
     NODE_HOME = 'C:\\Program Files\\nodejs'
-    // Adiciona o Node.js ao PATH
+    
+    // Adiciona Node.js ao PATH (usando ${} do Groovy)
     PATH = "${NODE_HOME};${env.PATH}"
   }
 
   stages {
     stage('Checkout') {
       steps {
+        // usa o SCM configurado no job (URL/branch/credentials)
         checkout scm
       }
     }
@@ -29,20 +33,22 @@ pipeline {
         bat 'echo ===== PATH ====='
         bat 'echo %PATH%'
         bat 'echo ===== NODE VERSION ====='
-        bat 'node --version || echo node not found'
-        bat 'npm --version || echo npm not found'
-        bat 'npx --version || echo npx not found'
+        bat 'node --version'
+        bat 'npm --version'
+        bat 'npx --version'
       }
     }
 
     stage('Install') {
       steps {
+        bat 'echo Instalando dependências...'
         bat 'npm.cmd ci'
       }
     }
 
     stage('Run API tests') {
       steps {
+        bat 'echo Executando testes de API...'
         bat 'npx.cmd playwright test'
       }
     }
@@ -50,8 +56,27 @@ pipeline {
 
   post {
     always {
+      // Publicar resultados dos testes
       junit testResults: 'test-results/**/*.xml', allowEmptyResults: true
+      
+      // Arquivar relatórios HTML e artefatos
       archiveArtifacts artifacts: 'playwright-report/**, test-results/**', allowEmptyArchive: true
+      
+      // Publicar relatório HTML (se tiver o plugin HTML Publisher)
+      publishHTML([
+        reportDir: 'playwright-report',
+        reportFiles: 'index.html',
+        reportName: 'Relatório Playwright',
+        allowMissing: true
+      ])
+    }
+    
+    success {
+      bat 'echo ✅ Todos os testes passaram!'
+    }
+    
+    failure {
+      bat 'echo ❌ Alguns testes falharam! Verifique o relatório.'
     }
   }
 }
