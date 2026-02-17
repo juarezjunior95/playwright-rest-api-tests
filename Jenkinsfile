@@ -3,19 +3,21 @@ pipeline {
 
   options {
     timestamps()
-    // evita o checkout automático para não duplicar, já que faremos checkout scm no stage
     skipDefaultCheckout(true)
   }
 
   environment {
     CI = 'true'
     BASE_URL = 'https://jsonplaceholder.typicode.com'
+    // CAMINHO COMPLETO para o Node.js no Windows
+    NODE_HOME = 'C:\\Program Files\\nodejs'
+    // Adiciona o Node.js ao PATH
+    PATH = "${NODE_HOME};${env.PATH}"
   }
 
   stages {
     stage('Checkout') {
       steps {
-        // usa o SCM configurado no job (URL/branch/credentials)
         checkout scm
       }
     }
@@ -26,22 +28,15 @@ pipeline {
         bat 'whoami'
         bat 'echo ===== PATH ====='
         bat 'echo %PATH%'
-        bat 'echo ===== WHERE NODE/NPM/NPX ====='
-        bat 'where node || echo node not found in PATH'
-        bat 'where npm  || echo npm not found in PATH'
-        bat 'where npx  || echo npx not found in PATH'
+        bat 'echo ===== NODE VERSION ====='
+        bat 'node --version || echo node not found'
+        bat 'npm --version || echo npm not found'
+        bat 'npx --version || echo npx not found'
       }
     }
 
     stage('Install') {
       steps {
-        // Se falhar aqui, é problema de PATH do Node no Jenkins (serviço)
-        bat 'node -v'
-
-        // Use npm.cmd para evitar bloqueio do npm.ps1 no Windows/PowerShell
-        bat 'npm.cmd -v'
-
-        // Ideal para CI: npm ci (você tem package-lock.json no repo)
         bat 'npm.cmd ci'
       }
     }
@@ -55,7 +50,7 @@ pipeline {
 
   post {
     always {
-      junit testResults: 'test-results/junit.xml', allowEmptyResults: true
+      junit testResults: 'test-results/**/*.xml', allowEmptyResults: true
       archiveArtifacts artifacts: 'playwright-report/**, test-results/**', allowEmptyArchive: true
     }
   }
